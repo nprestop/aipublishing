@@ -1,3 +1,5 @@
+# AI Publishing
+
 # Cloning
 
 Clone this repository as usual. In the backend folder, create an .env file and populate with the following example:
