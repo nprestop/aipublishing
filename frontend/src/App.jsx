@@ -38,7 +38,7 @@ function App() {
   }
 
   async function callGemini(prompt) {
-    const res = await fetch("/api/gemini", {
+    const res = await fetch("https://aipublishing.onrender.com/api/gemini", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ prompt }),
