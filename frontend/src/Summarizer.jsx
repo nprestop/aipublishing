@@ -19,7 +19,7 @@ function Summarizer({ bookText, setBookText, onSubmit }) {
     formData.append("file", file);
 
     try {
-      const res = await fetch("/api/upload", { method: "POST", body: formData });
+      const res = await fetch("https://aipublishing.onrender.com/api/upload", { method: "POST", body: formData });
       const data = await res.json();
 
       if (res.ok) {
