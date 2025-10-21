@@ -1,23 +1,34 @@
 import React from "react";
+import { Card, ListGroup, Badge } from "react-bootstrap";
 
 function ConversationHistory({ history }) {
   return (
-    <div className="conversation-history">
-      <h3 className="history-title">Conversation History</h3>
-      <div className="history-box">
-        {history.length === 0 ? (
-          <p className="muted small">No questions yet.</p>
-        ) : (
-          [...history].reverse().map((entry, i) => (
-            <div key={i} className="history-entry">
-              <p className="history-question"><strong>Q:</strong> {entry.prompt}</p>
-              <p className="history-answer"><strong>A:</strong> {entry.response}</p>
-              <hr />
-            </div>
-          ))
-        )}
-      </div>
-    </div>
+    <Card className="p-4 shadow-sm border-0">
+      <h5 className="mb-3 fw-semibold text-secondary">Conversation History</h5>
+
+      {history.length === 0 ? (
+        <p className="text-muted small mb-0">No questions yet.</p>
+      ) : (
+        <ListGroup variant="flush">
+          {[...history].reverse().map((entry, i) => (
+            <ListGroup.Item key={i} className="py-3">
+              <p className="mb-1">
+                <Badge bg="dark" className="me-2">
+                  Q
+                </Badge>
+                <strong>{entry.prompt}</strong>
+              </p>
+              <p className="mb-1">
+                <Badge bg="info" text="dark" className="me-2">
+                  A
+                </Badge>
+                {entry.response}
+              </p>
+            </ListGroup.Item>
+          ))}
+        </ListGroup>
+      )}
+    </Card>
   );
 }
 

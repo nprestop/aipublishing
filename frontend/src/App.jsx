@@ -1,9 +1,11 @@
 import React, { useState } from "react";
+import { Container, Navbar, Nav, Tab, Row, Col, Card } from "react-bootstrap";
 import Summarizer from "./Summarizer";
 import AuthorReflection from "./AuthorReflection";
 import MarketingAnalysis from "./MarketingAnalysis";
 import Response from "./Response";
 import ConversationHistory from "./ConversationHistory";
+import "bootstrap/dist/css/bootstrap.min.css";
 import "./App.css";
 
 function App() {
@@ -18,7 +20,6 @@ function App() {
 
   async function summarizeButtonClicked(userPrompt) {
     if (!userPrompt?.trim()) return;
-
     setLoading(true);
     setError("");
     setOut("");
@@ -50,60 +51,89 @@ function App() {
   }
 
   return (
-    <div className="app">
-      <header className="app-header">
-        <div className="brand">
-          <h1>AI Publishing Tool</h1>
-        </div>
-      </header>
-
-      <nav className="tabs">
-        {TABS.map((t) => (
-          <button
-            key={t}
-            className={`tab ${activeTab === t ? "active" : ""}`}
-            onClick={() => {
+    <Container fluid className="p-0">
+      {/* ===== Header / Navbar ===== */}
+      <Navbar bg="dark" variant="dark" expand="lg" className="px-4 mb-3">
+        <Navbar.Brand className="fs-4 fw-semibold text-light">
+          AI Publishing Tool
+        </Navbar.Brand>
+        <Navbar.Toggle aria-controls="main-tabs" />
+        <Navbar.Collapse id="main-tabs">
+          <Nav
+            activeKey={activeTab}
+            onSelect={(t) => {
               setActiveTab(t);
               setOut("");
               setError("");
             }}
+            className="ms-auto"
           >
-            {t}
-          </button>
-        ))}
-      </nav>
+            {TABS.map((t) => (
+              <Nav.Item key={t}>
+                <Nav.Link
+                  eventKey={t}
+                  className={`px-3 ${activeTab === t ? "fw-bold" : ""}`}
+                >
+                  {t}
+                </Nav.Link>
+              </Nav.Item>
+            ))}
+          </Nav>
+        </Navbar.Collapse>
+      </Navbar>
 
-      <main className="panel">
-        {activeTab === "Summarizer" && (
-          <Summarizer
-            bookText={bookText}
-            setBookText={setBookText}
-            onSubmit={() =>
-              summarizeButtonClicked(
-                "Summarize this book clearly with main characters, themes, and key plot beats. Return a short overview and 5 bullets of pivotal scenes."
-              )
-            }
-          />
-        )}
+      {/* ===== Main Content ===== */}
+      <Container>
+        <Row>
+          <Col xs={12}>
+            <Card className="shadow-sm border-0 mb-4 p-4 w-100">
+              <Tab.Container activeKey={activeTab}>
+                <Tab.Content>
+                  <Tab.Pane eventKey="Summarizer">
+                    <Summarizer
+                      bookText={bookText}
+                      setBookText={setBookText}
+                      onSubmit={() =>
+                        summarizeButtonClicked(
+                          "Summarize this book clearly with main characters, themes, and key plot beats. Return a short overview and 5 bullets of pivotal scenes."
+                        )
+                      }
+                    />
+                  </Tab.Pane>
 
-        {activeTab === "Author Reflection" && (
-          <AuthorReflection
-            bookText={bookText}
-            prompt={prompt}
-            setPrompt={setPrompt}
-            onRun={summarizeButtonClicked}
-          />
-        )}
+                  <Tab.Pane eventKey="Author Reflection">
+                    <AuthorReflection
+                      bookText={bookText}
+                      prompt={prompt}
+                      setPrompt={setPrompt}
+                      onRun={summarizeButtonClicked}
+                    />
+                  </Tab.Pane>
 
-        {activeTab === "Marketing Analysis" && (
-          <MarketingAnalysis bookText={bookText} onRun={summarizeButtonClicked} />
-        )}
+                  <Tab.Pane eventKey="Marketing Analysis">
+                    <MarketingAnalysis
+                      bookText={bookText}
+                      onRun={summarizeButtonClicked}
+                    />
+                  </Tab.Pane>
+                </Tab.Content>
+              </Tab.Container>
+            </Card>
 
-        <Response loading={loading} error={error} out={out} />
-      </main>
+            {/* Response Section */}
+            <Card className="shadow-sm border-0 mb-4 p-4 bg-light">
+              <Response loading={loading} error={error} out={out} />
+            </Card>
 
-      <ConversationHistory history={history} />
-    </div>
+            {/* Conversation History */}
+            <Card className="shadow-sm border-0 p-4 bg-white mb-5">
+              <h5 className="mb-3 text-secondary">Conversation History</h5>
+              <ConversationHistory history={history} />
+            </Card>
+          </Col>
+        </Row>
+      </Container>
+    </Container>
   );
 }
 
