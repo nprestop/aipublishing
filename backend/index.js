@@ -3,6 +3,7 @@ const cors = require('cors');
 const path = require('path');
 const multer = require('multer');
 const pdfParse = require('pdf-parse');
+require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 const fetch = global.fetch || ((...a) => import('node-fetch').then(({ default: f }) => f(...a)));
 
