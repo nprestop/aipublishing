@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Container, Nav, Navbar, Tab, Tabs } from "react-bootstrap";
 import UploadTab from "./components/UploadTab";
 import WritingAdviceTab from "./components/WritingAdviceTab";
+import MarketingAnalysisTab from "./components/MarketingAnalysisTab"; 
 import "./App.css";
 
 function App() {
@@ -46,8 +47,13 @@ function App() {
           <Tab eventKey="upload" title="Upload Manuscript">
             <UploadTab onUploadComplete={handleUploadComplete} />
           </Tab>
+
           <Tab eventKey="advice" title="Writing Advice">
             <WritingAdviceTab />
+          </Tab>
+
+          <Tab eventKey="marketing" title="Marketing Analysis">
+            <MarketingAnalysisTab />
           </Tab>
         </Tabs>
       </Container>

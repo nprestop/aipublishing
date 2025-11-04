@@ -57,12 +57,15 @@ app.post('/api/gemini', async (req, res) => {
     const combinedPrompt = `${prompt}\n\n---\nBook context:\n${uploadedBookText}`;
 
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${GEMINI_API_KEY}`;
+    console.log("Sending to Gemini...");
     const r = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: combinedPrompt }]}] }),
       timeout: 0,
     });
+    console.log("Response received from Gemini.");
+    
 
     const j = await r.json();
     if (!r.ok) return res.status(r.status).json({ error: j?.error?.message || `Gemini error (${r.status})` });
