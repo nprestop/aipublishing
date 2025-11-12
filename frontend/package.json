@@ -1,5 +1,6 @@
 {
   "name": "gemini-demo",
+  "homepage": "https://imperialsolutions.com/readerai",
   "version": "0.1.0",
   "private": true,
   "dependencies": {

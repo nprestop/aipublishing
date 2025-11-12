@@ -31,7 +31,7 @@ Response type: ${
     `.trim();
 
     try {
-      const res = await fetch("http://localhost:3000/api/gemini", {
+      const res = await fetch("https://aipublishing.onrender.com/api/gemini", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt: personalizedPrompt }),
