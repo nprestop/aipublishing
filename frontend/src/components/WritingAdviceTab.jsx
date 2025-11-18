@@ -1,8 +1,18 @@
 import React, { useState } from "react";
-import { Card, Button, Collapse, Spinner, Form, Container, Row, Col } from "react-bootstrap";
+import {
+  Card,
+  Button,
+  Collapse,
+  Spinner,
+  Form,
+  Container,
+  Row,
+  Col,
+} from "react-bootstrap";
+import API_BASE from "../config";
 
-function WritingAdviceTab() {
-  const [loadingState, setLoadingState] = useState({}); // { [key]: "quick" | "in-depth" | null }
+function WritingAdviceTab({ onResponsesUpdate }) {
+  const [loadingState, setLoadingState] = useState({});
   const [responses, setResponses] = useState({});
   const [prompts, setPrompts] = useState({});
   const [openSections, setOpenSections] = useState({});
@@ -17,20 +27,23 @@ function WritingAdviceTab() {
     setResponses((prev) => ({ ...prev, [key]: "" }));
 
     const personalizedPrompt = `
-You are a friendly, professional writing coach speaking directly to the author.
-Provide feedback with warmth, encouragement, and clear, actionable advice.
-Base your analysis on the uploaded manuscript text.
+You are a professional writing coach and editor. 
+Use a direct, objective, and constructive tone — avoid exaggerated praise or emotional language.
+Base your feedback strictly on the uploaded manuscript.
 
 Task: ${prompts[key] || topicPrompt}
-Response type: ${
-      depth === "quick"
-        ? "Provide a short summary (3–5 sentences)."
-        : "Provide a detailed, structured response with examples and specific feedback."
-    }
+
+Requested response style:
+${
+  depth === "quick"
+    ? "Provide a concise, 3–5 sentence editorial summary."
+    : "Provide a detailed, structured editorial analysis with strengths, weaknesses, and specific recommendations."
+}
+Avoid dramatic or overly personal language. Maintain a confident, neutral editorial voice.
     `.trim();
 
     try {
-      const res = await fetch("https://aipublishing.onrender.com/api/gemini", {
+      const res = await fetch(`${API_BASE}/api/gemini`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt: personalizedPrompt }),
@@ -39,55 +52,61 @@ Response type: ${
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to get AI response");
 
-      setResponses((prev) => ({ ...prev, [key]: data.text }));
+      // SAFE: Update local state FIRST
+      const updated = { ...responses, [key]: data.text };
+      setResponses(updated);
+
+      // SAFE: Only notify parent AFTER updating state
+      if (typeof onResponsesUpdate === "function") {
+        onResponsesUpdate(updated);
+      }
+
       setOpenSections((prev) => ({ ...prev, [key]: true }));
     } catch (error) {
-      console.error(error);
       setResponses((prev) => ({
         ...prev,
-        [key]: "⚠️ Connection error. Ensure the backend is running on port 3000.",
+        [key]:
+          "⚠️ Connection error. Please check your network or backend connection.",
       }));
     } finally {
       setLoadingState((prev) => ({ ...prev, [key]: null }));
     }
   };
 
-  const toggleSection = (key) => {
+  const toggleSection = (key) =>
     setOpenSections((prev) => ({ ...prev, [key]: !prev[key] }));
-  };
 
-  const toggleEditPrompt = (key) => {
+  const toggleEditPrompt = (key) =>
     setEditPromptOpen((prev) => ({ ...prev, [key]: !prev[key] }));
-  };
 
   const levels = [
     {
       key: "level1",
       title: "Level 1: Basic Writing Skills",
-      desc: "Focuses on spelling, grammar, punctuation, and sentence clarity.",
+      desc: "Looks at your clarity, sentence flow, grammar, punctuation, and overall readability.",
       prompt:
-        "Analyze this manuscript for grammar, spelling, punctuation, and readability issues. Provide specific examples and corrections where possible.",
+        "Review the manuscript for clarity, sentence flow, grammar, punctuation, and readability. Identify areas needing improvement and offer direct, constructive guidance.",
     },
     {
       key: "level2",
       title: "Level 2: Story Structure & Characters",
-      desc: "Analyzes plot flow, pacing, dialogue, and character development.",
+      desc: "Evaluates your pacing, transitions, dialogue, plot flow, and character development.",
       prompt:
-        "Analyze this manuscript’s story structure, pacing, and character arcs. Offer constructive feedback and identify key strengths and weaknesses.",
+        "Evaluate the structure of your story, including pacing, transitions, dialogue, and character development. Highlight strengths and offer specific suggestions for improving plot momentum or character clarity.",
     },
     {
       key: "level3",
       title: "Level 3: Themes & Philosophy",
-      desc: "Explores deeper ideas and emotional resonance.",
+      desc: "Analyzes the deeper meaning, themes, symbolism, and emotional tone in your manuscript.",
       prompt:
-        "Discuss the manuscript’s deeper themes, symbolism, and emotional impact. What meaning or philosophy does the reader take away?",
+        "Analyze the themes, symbolism, emotional tone, and deeper meaning within your manuscript. Explain what readers may take away and suggest ways to strengthen thematic clarity.",
     },
     {
       key: "enjoyment",
       title: "Reader Enjoyment",
-      desc: "Evaluates tone, rhythm, and engagement.",
+      desc: "Assesses your tone, rhythm, emotional impact, and overall reader engagement.",
       prompt:
-        "Evaluate how engaging and enjoyable this manuscript is to read. Comment on tone, rhythm, and reader immersion.",
+        "Evaluate how engaging and immersive the manuscript is. Assess tone, rhythm, atmosphere, emotional impact, and flow. Offer constructive advice for improving engagement.",
     },
   ];
 
@@ -98,7 +117,6 @@ Response type: ${
       {levels.map((lvl) => (
         <Card key={lvl.key} className="mb-4 shadow-sm">
           <Card.Body>
-            {/* Header row: title + edit button */}
             <Row className="align-items-center mb-2">
               <Col xs="auto" className="flex-grow-1">
                 <Card.Title className="fw-bold mb-0">{lvl.title}</Card.Title>
@@ -116,7 +134,6 @@ Response type: ${
 
             <Card.Text className="text-muted mb-2">{lvl.desc}</Card.Text>
 
-            {/* Collapsible editable prompt box */}
             <Collapse in={editPromptOpen[lvl.key]}>
               <div className="mb-3">
                 <Form.Group>
@@ -127,15 +144,12 @@ Response type: ${
                     as="textarea"
                     rows={3}
                     value={prompts[lvl.key] ?? lvl.prompt}
-                    onChange={(e) =>
-                      handlePromptChange(lvl.key, e.target.value)
-                    }
+                    onChange={(e) => handlePromptChange(lvl.key, e.target.value)}
                   />
                 </Form.Group>
               </div>
             </Collapse>
 
-            {/* Action buttons */}
             <div className="d-flex flex-wrap gap-2 mb-2">
               <Button
                 variant="outline-success"
@@ -143,7 +157,7 @@ Response type: ${
                 onClick={() => handleFeedback(lvl.key, lvl.prompt, "quick")}
               >
                 {loadingState[lvl.key] === "quick" ? (
-                  <Spinner as="span" animation="border" size="sm" />
+                  <Spinner animation="border" size="sm" />
                 ) : (
                   "Quick Summary"
                 )}
@@ -155,7 +169,7 @@ Response type: ${
                 onClick={() => handleFeedback(lvl.key, lvl.prompt, "in-depth")}
               >
                 {loadingState[lvl.key] === "in-depth" ? (
-                  <Spinner as="span" animation="border" size="sm" />
+                  <Spinner animation="border" size="sm" />
                 ) : (
                   "In-Depth Response"
                 )}
@@ -171,7 +185,6 @@ Response type: ${
               )}
             </div>
 
-            {/* Collapsible AI Response */}
             <Collapse in={openSections[lvl.key]}>
               <div
                 className="mt-3 p-3 border rounded bg-light"

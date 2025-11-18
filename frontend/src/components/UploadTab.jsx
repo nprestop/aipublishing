@@ -41,11 +41,17 @@ function UploadTab({ onUploadComplete }) {
           version: currentVersion,
         };
         setUploads((prev) => [...prev, fileInfo]);
+
         setMessage(
           `✅ Version ${currentVersion} uploaded successfully! (${data.length.toLocaleString()} characters processed)`
         );
+
         setCurrentVersion((v) => v + 1);
-        onUploadComplete();
+
+        // ⭐ Prevents the "onUploadComplete is not a function" crash
+        if (typeof onUploadComplete === "function") {
+          onUploadComplete();
+        }
       } else {
         setMessage(`❌ Upload failed: ${data.error || "Unknown error"}`);
       }
@@ -76,6 +82,7 @@ function UploadTab({ onUploadComplete }) {
         />
       </Form.Group>
 
+      {/* ⭐ MISSION STATEMENT RESTORED */}
       <Card className="p-3 bg-light mb-4 border-0 rounded">
         <h5 className="text-primary mb-1">Mission Statement</h5>
         <p className="mb-0 text-secondary">

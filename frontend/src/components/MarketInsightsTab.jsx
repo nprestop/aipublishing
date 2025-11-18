@@ -1,8 +1,17 @@
 import React, { useState } from "react";
-import { Container, Card, Button, Spinner, Form, Collapse, Row, Col } from "react-bootstrap";
+import {
+  Container,
+  Card,
+  Button,
+  Spinner,
+  Form,
+  Collapse,
+  Row,
+  Col,
+} from "react-bootstrap";
 
-function MarketingAnalysisTab() {
-  const [loadingState, setLoadingState] = useState({}); // holds { [index]: "quick" | "in-depth" | null }
+function MarketInsightsTab({ onResponsesUpdate }) {
+  const [loadingState, setLoadingState] = useState({});
   const [responses, setResponses] = useState({});
   const [prompts, setPrompts] = useState({});
   const [openSections, setOpenSections] = useState({});
@@ -13,22 +22,21 @@ function MarketingAnalysisTab() {
   };
 
   const handleFeedback = async (index, topicPrompt, depth = "quick") => {
-    // set specific loading type for this section
     setLoadingState((prev) => ({ ...prev, [index]: depth }));
     setResponses((prev) => ({ ...prev, [index]: "" }));
 
     const personalizedPrompt = `
-You are a friendly, professional book marketing consultant.
-Speak directly to the author as "you", offering warm but expert advice.
-Base your analysis on the uploaded manuscript text.
+You are an analytical publishing-market consultant. 
+Base your analysis ONLY on the uploaded manuscript.
 
 Task: ${prompts[index] || topicPrompt}
-Response type: ${
+
+Response style: ${
       depth === "quick"
-        ? "Provide a short summary (3–5 sentences)."
-        : "Provide a detailed, structured, in-depth response with clear headings and bullet points."
+        ? "Provide a concise 3–5 sentence market insight summary."
+        : "Provide a detailed, structured market analysis using headings and bullet points. Keep the tone professional and neutral."
     }
-    `.trim();
+`.trim();
 
     try {
       const res = await fetch("https://aipublishing.onrender.com/api/gemini", {
@@ -38,17 +46,31 @@ Response type: ${
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to get AI response");
+      if (!res.ok) throw new Error(data.error || "Market insights request failed.");
 
-      setResponses((prev) => ({ ...prev, [index]: data.text }));
+      // Update internal responses
+      const updated = { ...responses, [index]: data.text };
+      setResponses(updated);
+
+      // Notify parent (safe)
+      if (typeof onResponsesUpdate === "function") {
+        onResponsesUpdate(updated);
+      }
+
+      // Auto-expand
       setOpenSections((prev) => ({ ...prev, [index]: true }));
     } catch (err) {
       console.error(err);
-      setResponses((prev) => ({
-        ...prev,
+      const updated = {
+        ...responses,
         [index]:
-          "❌ Error generating marketing analysis. Please check your connection or API key.",
-      }));
+          "⚠️ Error generating insights. Please check your connection or API key.",
+      };
+      setResponses(updated);
+
+      if (typeof onResponsesUpdate === "function") {
+        onResponsesUpdate(updated);
+      }
     } finally {
       setLoadingState((prev) => ({ ...prev, [index]: null }));
     }
@@ -62,56 +84,55 @@ Response type: ${
     setEditPromptOpen((prev) => ({ ...prev, [index]: !prev[index] }));
   };
 
+  // Sections for Market Insights
   const sections = [
     {
-      title: "1. General Marketing Advice",
+      title: "1. Target Audience Analysis",
       description:
-        "Broad strategies and best practices to help you promote and position your book successfully.",
+        "Identify who your most likely readers are and how their preferences shape market performance.",
       prompt:
-        "Provide general marketing advice tailored to this manuscript. Include actionable steps an author can take to promote their book effectively.",
+        "Analyze the manuscript's target audience, including demographics, reading behaviors, and motivation for this genre.",
     },
     {
-      title: "2. Target Audience",
+      title: "2. Genre Trends & Market Fit",
       description:
-        "Identifies who your ideal readers are and how you can reach them through online or offline channels.",
+        "See how your book aligns with current publishing trends for its category.",
       prompt:
-        "Identify the most relevant target audience for this manuscript and suggest specific ways to reach them.",
+        "Evaluate how this manuscript fits into current genre and subgenre trends. Discuss market momentum, rising themes, and commercial opportunities.",
     },
     {
-      title: "3. Market Trends & Positioning",
+      title: "3. Competitor & Comparable Titles",
       description:
-        "Analyzes how your book fits into the current publishing market.",
+        "Understand what similar books are succeeding—and how yours compares.",
       prompt:
-        "Analyze how this manuscript fits into the current book market for its genre. Include any trends or unique selling points that could improve visibility.",
+        "Identify comparable titles (comps) for this manuscript and analyze how its tone, themes, and structure compare to successful books.",
     },
     {
-      title: "4. Promotion Channels",
+      title: "4. Positioning & Unique Selling Points",
       description:
-        "Recommends the best online and offline platforms for book promotion.",
+        "Assess what makes your book distinct and how it stands out in the market.",
       prompt:
-        "Recommend the best platforms, communities, or promotional channels for the author to focus on when marketing this book.",
+        "Determine the manuscript's unique selling points (USPs). Explain how its voice, themes, and narrative elements contribute to market positioning.",
     },
     {
-      title: "5. Competitor Comparison",
+      title: "5. Commercial Potential Forecast",
       description:
-        "Examines similar successful books and marketing approaches to inspire your strategy.",
+        "Get a data-informed projection of how the manuscript could perform commercially.",
       prompt:
-        "Compare this manuscript to similar successful books and analyze what marketing strategies they used that could be applied here.",
+        "Provide a commercial potential forecast for this manuscript based on genre trends, audience demand, and comp performance.",
     },
   ];
 
   return (
     <Container className="py-4 text-start">
-      <h2 className="mb-4 text-center text-primary">
-        📊 Marketing Analysis & Recommendations
-      </h2>
+      <h2 className="mb-4 text-center text-primary">📊 Market Insights</h2>
 
       {sections.map((section, index) => (
         <Card key={index} className="mb-4 shadow-sm">
           <Card.Body>
-            {/* Header row with title + edit button */}
+            {/* Title + Edit Button */}
             <Row className="align-items-center mb-2">
-              <Col xs="auto" className="flex-grow-1">
+              <Col className="flex-grow-1">
                 <Card.Title className="fw-bold mb-0">{section.title}</Card.Title>
               </Col>
               <Col xs="auto">
@@ -120,20 +141,18 @@ Response type: ${
                   size="sm"
                   onClick={() => toggleEditPrompt(index)}
                 >
-                  {editPromptOpen[index] ? "Done Editing" : "✏️ Edit Prompt"}
+                  {editPromptOpen[index] ? "Done" : "✏️ Edit Prompt"}
                 </Button>
               </Col>
             </Row>
 
-            <Card.Text className="text-muted mb-2">{section.description}</Card.Text>
+            <Card.Text className="text-muted">{section.description}</Card.Text>
 
-            {/* Collapsible editable prompt box */}
+            {/* Prompt Editor */}
             <Collapse in={editPromptOpen[index]}>
               <div className="mb-3">
                 <Form.Group>
-                  <Form.Label className="fw-semibold text-secondary">
-                    Prompt being sent:
-                  </Form.Label>
+                  <Form.Label className="fw-semibold">Prompt being sent:</Form.Label>
                   <Form.Control
                     as="textarea"
                     rows={3}
@@ -144,7 +163,7 @@ Response type: ${
               </div>
             </Collapse>
 
-            {/* Action buttons */}
+            {/* Buttons */}
             <div className="d-flex flex-wrap gap-2 mb-2">
               <Button
                 variant="outline-success"
@@ -152,7 +171,7 @@ Response type: ${
                 onClick={() => handleFeedback(index, section.prompt, "quick")}
               >
                 {loadingState[index] === "quick" ? (
-                  <Spinner as="span" animation="border" size="sm" />
+                  <Spinner animation="border" size="sm" />
                 ) : (
                   "Quick Summary"
                 )}
@@ -164,9 +183,9 @@ Response type: ${
                 onClick={() => handleFeedback(index, section.prompt, "in-depth")}
               >
                 {loadingState[index] === "in-depth" ? (
-                  <Spinner as="span" animation="border" size="sm" />
+                  <Spinner animation="border" size="sm" />
                 ) : (
-                  "In-Depth Response"
+                  "In-Depth Insights"
                 )}
               </Button>
 
@@ -180,10 +199,10 @@ Response type: ${
               )}
             </div>
 
-            {/* Collapsible AI Response */}
+            {/* AI Response */}
             <Collapse in={openSections[index]}>
               <div
-                className="mt-3 p-3 border rounded bg-light"
+                className="mt-3 p-3 bg-light border rounded"
                 style={{ whiteSpace: "pre-wrap" }}
               >
                 {responses[index] || ""}
@@ -196,4 +215,4 @@ Response type: ${
   );
 }
 
-export default MarketingAnalysisTab;
+export default MarketInsightsTab;
