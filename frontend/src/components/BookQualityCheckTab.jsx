@@ -10,85 +10,103 @@ import {
   Col,
 } from "react-bootstrap";
 
-function BookQualityCheckTab({ onResponsesUpdate }) {
+// ✔ Personality rules (same as UploadTab + all other tabs)
+const PERSONALITIES = {
+  direct:
+    "Use a direct, blunt, highly honest tone. Do not soften criticism. Prioritize truth over comfort.",
+  gentle:
+    "Use a soft, encouraging, supportive tone. Phrase critiques gently and highlight strengths first.",
+  academic:
+    "Use a scholarly, analytical tone with structured insights and formal language.",
+  commercial:
+    "Use an industry-focused professional tone discussing market standards, demand, and positioning.",
+};
+
+function BookQualityCheckTab({ onResponsesUpdate, personality }) {
   const [loadingState, setLoadingState] = useState({});
   const [responses, setResponses] = useState({});
   const [prompts, setPrompts] = useState({});
   const [openSections, setOpenSections] = useState({});
   const [editPromptOpen, setEditPromptOpen] = useState({});
 
-  const handlePromptChange = (index, value) => {
-    setPrompts((prev) => ({ ...prev, [index]: value }));
+  const handlePromptChange = (i, value) => {
+    setPrompts((prev) => ({ ...prev, [i]: value }));
   };
 
-  const handleFeedback = async (index, topicPrompt, depth = "quick") => {
-    setLoadingState((prev) => ({ ...prev, [index]: depth }));
-    setResponses((prev) => ({ ...prev, [index]: "" }));
+  const handleFeedback = async (i, topicPrompt, depth = "quick") => {
+    setLoadingState((prev) => ({ ...prev, [i]: depth }));
+    setResponses((prev) => ({ ...prev, [i]: "" }));
+
+    const personalityModifier = PERSONALITIES[personality] || "";
 
     const finalPrompt = `
+${personalityModifier}
+
 You are a professional publishing evaluator. 
 Assess the manuscript objectively as a commercial product.
 
-Task: ${prompts[index] || topicPrompt}
+AI Personality Style (follow strictly):
+${personalityModifier}
+
+Task: ${prompts[i] || topicPrompt}
 
 Response style: ${
       depth === "quick"
         ? "Provide a concise 3–5 sentence quality summary."
-        : "Provide a structured, detailed evaluation with headings and bullet points. Maintain a neutral, professional tone."
+        : "Provide a structured, detailed evaluation using headings and bullet points. Apply the personality tone consistently throughout the analysis."
     }
-    `.trim();
+`.trim();
 
     try {
       const res = await fetch("https://aipublishing.onrender.com/api/gemini", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt: finalPrompt }),
       });
 
       const data = await res.json();
-      if (!res.ok)
-        throw new Error(data.error || "Book quality check failed");
 
-      const updated = { ...responses, [index]: data.text };
+      if (!res.ok) {
+        window.setGlobalError(
+          data.error || "Book quality evaluation request failed."
+        );
+        throw new Error(data.error || "Book quality evaluation request failed");
+      }
+
+      const updated = { ...responses, [i]: data.text };
       setResponses(updated);
 
-      // Notify parent
       if (typeof onResponsesUpdate === "function") {
         onResponsesUpdate(updated);
       }
 
-      // Auto-expand section
-      setOpenSections((prev) => ({ ...prev, [index]: true }));
-    } catch (err) {
-      console.error(err);
+      setOpenSections((prev) => ({ ...prev, [i]: true }));
+    } catch {
+      window.setGlobalError(
+        "Error generating manuscript quality analysis. Please try again."
+      );
 
       const updated = {
         ...responses,
-        [index]:
-          "⚠️ Error generating analysis. Please check your connection.",
+        [i]: "⚠️ Error generating analysis. Please check your connection.",
       };
-
       setResponses(updated);
 
       if (typeof onResponsesUpdate === "function") {
         onResponsesUpdate(updated);
       }
     } finally {
-      setLoadingState((prev) => ({ ...prev, [index]: null }));
+      setLoadingState((prev) => ({ ...prev, [i]: null }));
     }
   };
 
-  const toggleSection = (i) =>
-    setOpenSections((prev) => ({ ...prev, [i]: !prev[i] }));
+  const toggleSection = (index) =>
+    setOpenSections((prev) => ({ ...prev, [index]: !prev[index] }));
 
-  const toggleEditPrompt = (i) =>
-    setEditPromptOpen((prev) => ({ ...prev, [i]: !prev[i] }));
+  const toggleEditPrompt = (index) =>
+    setEditPromptOpen((prev) => ({ ...prev, [index]: !prev[index] }));
 
-  // -------------------------
-  // Book Quality Check Sections
-  // -------------------------
+  // ✔ Book Quality Sections (unchanged)
   const sections = [
     {
       title: "1. Recommended Word Count & Page Length",
@@ -116,7 +134,7 @@ Response style: ${
       description:
         "Considers whether the style, character depth, pacing, and themes appeal to the target demographic.",
       prompt:
-        "Assesses how appealing the manuscript is to its intended audience based on writing style, themes, pacing, and emotional tone.",
+        "Assess how appealing the manuscript is to its intended audience based on writing style, themes, pacing, and emotional tone.",
     },
     {
       title: "5. Product Strength: Structure, Cohesion, and Flow",
@@ -134,7 +152,6 @@ Response style: ${
       {sections.map((section, index) => (
         <Card key={index} className="mb-4 shadow-sm">
           <Card.Body>
-            {/* Title & Edit Button */}
             <Row className="align-items-center mb-2">
               <Col className="flex-grow-1">
                 <Card.Title className="fw-bold mb-0">
@@ -153,11 +170,8 @@ Response style: ${
               </Col>
             </Row>
 
-            <Card.Text className="text-muted">
-              {section.description}
-            </Card.Text>
+            <Card.Text className="text-muted">{section.description}</Card.Text>
 
-            {/* Editable Prompt Box */}
             <Collapse in={editPromptOpen[index]}>
               <div className="mb-3">
                 <Form.Group>
@@ -176,7 +190,6 @@ Response style: ${
               </div>
             </Collapse>
 
-            {/* Buttons */}
             <div className="d-flex flex-wrap gap-2 mb-2">
               <Button
                 variant="outline-success"
@@ -216,7 +229,6 @@ Response style: ${
               )}
             </div>
 
-            {/* AI Response */}
             <Collapse in={openSections[index]}>
               <div
                 className="mt-3 p-3 bg-light border rounded"

@@ -5,7 +5,9 @@ const multer = require('multer');
 const pdfParse = require('pdf-parse');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 
-const fetch = global.fetch || ((...a) => import('node-fetch').then(({ default: f }) => f(...a)));
+const fetch = global.fetch || ((...a) =>
+  import('node-fetch').then(({ default: f }) => f(...a))
+);
 
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 
@@ -40,7 +42,7 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
 
     uploadedBookText = text;
     res.json({ message: 'File uploaded successfully', length: text.length });
-  } catch (err) {
+  } catch {
     res.status(500).json({ error: 'File processing failed' });
   }
 });
@@ -51,29 +53,60 @@ app.post('/api/gemini', async (req, res) => {
   try {
     const prompt = (req.body?.prompt || '').trim();
     if (!prompt) return res.status(400).json({ error: 'Missing prompt' });
-    if (!GEMINI_API_KEY) return res.status(500).json({ error: 'Missing GEMINI_API_KEY' });
-    if (!uploadedBookText) return res.status(400).json({ error: 'No book uploaded yet. Please upload a file first.' });
+    if (!GEMINI_API_KEY)
+      return res.status(500).json({ error: 'Missing GEMINI_API_KEY' });
+    if (!uploadedBookText)
+      return res
+        .status(400)
+        .json({ error: 'No book uploaded yet. Please upload a file first.' });
 
     const combinedPrompt = `${prompt}\n\n---\nBook context:\n${uploadedBookText}`;
-
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${GEMINI_API_KEY}`;
-    console.log("Sending to Gemini...");
+
     const r = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: combinedPrompt }]}] }),
+      body: JSON.stringify({
+        contents: [{ role: 'user', parts: [{ text: combinedPrompt }] }],
+      }),
       timeout: 0,
     });
-    console.log("Response received from Gemini.");
-    
 
     const j = await r.json();
-    if (!r.ok) return res.status(r.status).json({ error: j?.error?.message || `Gemini error (${r.status})` });
+    const geminiError = j?.error?.message || '';
+
+    if (geminiError.includes('RESOURCE_EXHAUSTED')) {
+      return res.status(429).json({
+        error:
+          'You’ve reached Gemini’s rate limit (about 2 requests per minute). Please wait 30–60 seconds and try again.',
+      });
+    }
+
+    if (
+      geminiError.includes('maximum input length') ||
+      geminiError.includes('input too long') ||
+      geminiError.includes('too large')
+    ) {
+      return res.status(400).json({
+        error:
+          'Your manuscript is too long for this model. Try uploading a shorter version or splitting it into sections.',
+      });
+    }
+
+    if (!r.ok) {
+      return res.status(r.status).json({
+        error:
+          geminiError ||
+          'Gemini returned an unexpected error. Try again or adjust your prompt.',
+      });
+    }
 
     const text = j?.candidates?.[0]?.content?.parts?.[0]?.text || '';
     res.json({ text, modelUsed: MODEL });
-  } catch (e) {
-    res.status(500).json({ error: 'Unexpected server error' });
+  } catch {
+    res.status(500).json({
+      error: 'Unexpected server error. Please try again or check your connection.',
+    });
   }
 });
 
@@ -82,4 +115,6 @@ app.post('/api/clear', (_req, res) => {
   res.json({ message: 'Server memory cleared' });
 });
 
-app.listen(PORT, () => console.log(`🚀 Backend running at http://localhost:${PORT}`));
+app.listen(PORT, () =>
+  console.log(`Backend running at http://localhost:${PORT}`)
+);

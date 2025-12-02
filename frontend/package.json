@@ -23,6 +23,7 @@
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.2.0",
+    "baseline-browser-mapping": "^2.8.32",
     "vite": "^5.0.0"
   },
   "eslintConfig": {

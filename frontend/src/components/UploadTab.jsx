@@ -1,11 +1,11 @@
 import React, { useState } from "react";
 import { Card, Form, Button, Spinner, Alert } from "react-bootstrap";
 
-function UploadTab({ onUploadComplete }) {
+function UploadTab({ onUploadComplete, personality, setPersonality }) {
   const [file, setFile] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [message, setMessage] = useState("");
-  const [uploads, setUploads] = useState([]); // [{ name, length }]
+  const [uploads, setUploads] = useState([]);
   const [currentVersion, setCurrentVersion] = useState(1);
 
   const handleFileChange = (e) => {
@@ -48,16 +48,14 @@ function UploadTab({ onUploadComplete }) {
 
         setCurrentVersion((v) => v + 1);
 
-        // ⭐ Prevents the "onUploadComplete is not a function" crash
         if (typeof onUploadComplete === "function") {
           onUploadComplete();
         }
       } else {
         setMessage(`❌ Upload failed: ${data.error || "Unknown error"}`);
       }
-    } catch (err) {
+    } catch {
       setMessage("❌ Failed to connect to backend. Please ensure the server is running.");
-      console.error(err);
     } finally {
       setUploading(false);
       setFile(null);
@@ -66,10 +64,24 @@ function UploadTab({ onUploadComplete }) {
 
   return (
     <Card className="p-4 shadow-sm border-0">
+      <div className="mb-4">
+        <h5 className="fw-semibold text-primary mb-2">🎭 AI Personality Style</h5>
+        <Form.Select
+          value={personality}
+          onChange={(e) => setPersonality(e.target.value)}
+          className="fw-semibold"
+        >
+          <option value="direct">Direct & Blunt Editor (Honest + Critical)</option>
+          <option value="gentle">Supportive & Kind Coach (Soft + Encouraging)</option>
+          <option value="academic">Academic Reviewer (Formal + Analytical)</option>
+          <option value="commercial">Commercial Publishing Expert (Industry-Focused)</option>
+        </Form.Select>
+      </div>
+
       <h4 className="mb-3 fw-bold text-primary">📤 Upload Your Manuscript</h4>
+
       <p className="text-muted mb-4">
-        You can upload your initial manuscript and later upload a revised version for comparison.
-        <br />
+        Upload your manuscript and later upload a revised version for comparison.
         Accepted formats: <strong>.txt</strong> or <strong>.pdf</strong>.
       </p>
 
@@ -82,12 +94,11 @@ function UploadTab({ onUploadComplete }) {
         />
       </Form.Group>
 
-      {/* ⭐ MISSION STATEMENT RESTORED */}
       <Card className="p-3 bg-light mb-4 border-0 rounded">
         <h5 className="text-primary mb-1">Mission Statement</h5>
         <p className="mb-0 text-secondary">
-          Reader AI empowers authors through clear, constructive feedback that enhances both
-          technical precision and creative depth.
+          Reader AI empowers authors through clear, constructive feedback that enhances
+          both technical precision and creative depth.
         </p>
       </Card>
 
@@ -100,10 +111,13 @@ function UploadTab({ onUploadComplete }) {
         >
           {uploading ? (
             <>
-              <Spinner animation="border" size="sm" className="me-2" /> Uploading...
+              <Spinner animation="border" size="sm" className="me-2" />
+              Uploading...
             </>
           ) : (
-            `Upload Manuscript ${currentVersion === 1 ? "" : `(Version ${currentVersion})`}`
+            `Upload Manuscript ${
+              currentVersion === 1 ? "" : `(Version ${currentVersion})`
+            }`
           )}
         </Button>
       </div>
@@ -119,7 +133,9 @@ function UploadTab({ onUploadComplete }) {
 
       {uploads.length > 0 && (
         <div className="mt-4">
-          <h6 className="fw-bold text-secondary mb-2">📚 Uploaded Manuscripts</h6>
+          <h6 className="fw-bold text-secondary mb-2">
+            📚 Uploaded Manuscripts
+          </h6>
           {uploads.map((u, i) => (
             <Card key={i} className="p-3 mb-2 border-0 bg-light">
               <div className="d-flex justify-content-between align-items-center">

@@ -10,7 +10,20 @@ import {
   Col,
 } from "react-bootstrap";
 
-function MarketingStrategyTab({ onResponsesUpdate }) {
+// ✔ Personality definitions (required)
+const PERSONALITIES = {
+  direct:
+    "Use a direct, blunt, highly honest tone. Do not soften criticism. Prioritize truth over comfort.",
+  gentle:
+    "Use a soft, encouraging, supportive tone. Phrase critiques gently and highlight strengths first.",
+  academic:
+    "Use a scholarly, analytical tone with structured insights and formal language.",
+  commercial:
+    "Use an industry-focused professional tone discussing market standards, demand, and positioning.",
+};
+
+// ✔ Added personality as a required prop
+function MarketingStrategyTab({ onResponsesUpdate, personality }) {
   const [loadingState, setLoadingState] = useState({});
   const [responses, setResponses] = useState({});
   const [prompts, setPrompts] = useState({});
@@ -25,18 +38,24 @@ function MarketingStrategyTab({ onResponsesUpdate }) {
     setLoadingState((p) => ({ ...p, [i]: depth }));
     setResponses((p) => ({ ...p, [i]: "" }));
 
+    // ✔ FIX: personality now safely defined
+    const personalityModifier = PERSONALITIES[personality] || "";
+
     const promptToSend = `
-You are a professional book marketing strategist.
-Your goal is to give clear, actionable, realistic marketing steps for the manuscript based on its content.
-
-Task: ${prompts[i] || topicPrompt}
-
-Response style: ${
+    You are a professional book marketing strategist.
+    Your goal is to give clear, actionable, realistic marketing steps for the manuscript based on its content.
+    
+    AI Personality Style (follow this strictly at all times):
+    ${personalityModifier}
+    
+    Task: ${prompts[i] || topicPrompt}
+    
+    Response style: ${
       depth === "quick"
         ? "Provide a short 3–5 sentence actionable summary."
-        : "Provide a detailed, structured marketing strategy with sections, bullet points, and practical steps. Maintain a professional, neutral tone."
+        : "Provide a detailed, structured marketing strategy with sections, bullet points, and practical steps. Maintain a professional, neutral tone unless the selected personality instructs otherwise."
     }
-`.trim();
+    `.trim();
 
     try {
       const res = await fetch("https://aipublishing.onrender.com/api/gemini", {
@@ -46,7 +65,11 @@ Response style: ${
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Marketing strategy request failed");
+
+      if (!res.ok) {
+        window.setGlobalError(data.error || "Marketing strategy request failed.");
+        throw new Error(data.error || "Marketing strategy request failed");
+      }
 
       const updated = { ...responses, [i]: data.text };
       setResponses(updated);
@@ -58,6 +81,7 @@ Response style: ${
       setOpenSections((p) => ({ ...p, [i]: true }));
     } catch (err) {
       console.error(err);
+      window.setGlobalError("Error generating marketing strategy. Please try again.");
 
       const updated = {
         ...responses,
@@ -79,7 +103,6 @@ Response style: ${
   const toggleEditPrompt = (i) =>
     setEditPromptOpen((p) => ({ ...p, [i]: !p[i] }));
 
-  // MARKETING STRATEGY SECTIONS
   const sections = [
     {
       title: "1. General Marketing Strategy",

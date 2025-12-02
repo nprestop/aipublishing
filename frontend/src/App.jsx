@@ -4,7 +4,10 @@ import {
   Navbar,
   Tab,
   Tabs,
-  Button
+  Button,
+  Modal,
+  Alert,
+  Form
 } from "react-bootstrap";
 
 import UploadTab from "./components/UploadTab";
@@ -18,24 +21,33 @@ import "./App.css";
 function App() {
   const [key, setKey] = useState("upload");
 
-  // States to collect responses for the report
+  // Personality selection
+  const [personality, setPersonality] = useState("gentle");
+
+  // Responses from each tab
   const [writingResponses, setWritingResponses] = useState({});
   const [marketInsightsResponses, setMarketInsightsResponses] = useState({});
   const [marketingStrategyResponses, setMarketingStrategyResponses] = useState({});
   const [bookQualityResponses, setBookQualityResponses] = useState({});
 
-  // Show download button only if there is any content
+  // Global error modal
+  const [globalError, setGlobalError] = useState("");
+  const [showGlobalError, setShowGlobalError] = useState(false);
+
+  window.setGlobalError = (msg) => {
+    setGlobalError(msg);
+    setShowGlobalError(true);
+  };
+
   const hasReportContent =
     Object.keys(writingResponses).length > 0 ||
     Object.keys(marketInsightsResponses).length > 0 ||
     Object.keys(marketingStrategyResponses).length > 0 ||
     Object.keys(bookQualityResponses).length > 0;
 
-  // Combined Report Download
   const handleDownloadReport = () => {
     let reportText = "📖 Reader AI - Combined Report\n\n";
 
-    // Writing Advice
     if (Object.keys(writingResponses).length > 0) {
       reportText += "=== Writing Advice ===\n";
       for (const [section, text] of Object.entries(writingResponses)) {
@@ -44,7 +56,6 @@ function App() {
       reportText += "\n";
     }
 
-    // Market Insights
     if (Object.keys(marketInsightsResponses).length > 0) {
       reportText += "=== Market Insights ===\n";
       for (const [section, text] of Object.entries(marketInsightsResponses)) {
@@ -53,7 +64,6 @@ function App() {
       reportText += "\n";
     }
 
-    // Marketing Strategy
     if (Object.keys(marketingStrategyResponses).length > 0) {
       reportText += "=== Marketing Strategy ===\n";
       for (const [section, text] of Object.entries(marketingStrategyResponses)) {
@@ -62,7 +72,6 @@ function App() {
       reportText += "\n";
     }
 
-    // Book Quality Check
     if (Object.keys(bookQualityResponses).length > 0) {
       reportText += "=== Book Quality Check ===\n";
       for (const [section, text] of Object.entries(bookQualityResponses)) {
@@ -71,7 +80,6 @@ function App() {
       reportText += "\n";
     }
 
-    // Create the downloadable file
     const blob = new Blob([reportText], { type: "text/plain" });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
@@ -81,7 +89,23 @@ function App() {
 
   return (
     <>
-      {/* Header */}
+      {/* GLOBAL ERROR POPUP */}
+      <Modal
+        show={showGlobalError}
+        onHide={() => setShowGlobalError(false)}
+        centered
+      >
+        <Modal.Header closeButton>
+          <Modal.Title>Error</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Alert variant="danger" className="fw-semibold mb-0">
+            {globalError}
+          </Alert>
+        </Modal.Body>
+      </Modal>
+
+      {/* NAVBAR */}
       <Navbar
         expand="lg"
         className="shadow-sm px-3"
@@ -106,7 +130,7 @@ function App() {
         </Container>
       </Navbar>
 
-      {/* Content */}
+      {/* PAGE CONTENT */}
       <Container className="py-5">
         <div className="text-center mb-4">
           <h2 className="fw-bold">Refine Your Writing with AI-Powered Insight</h2>
@@ -116,48 +140,52 @@ function App() {
           </p>
         </div>
 
+        {/* TABS */}
         <Tabs
           activeKey={key}
           onSelect={(k) => setKey(k)}
           className="mb-4 justify-content-center"
           fill
         >
-          {/* Upload */}
           <Tab eventKey="upload" title="📤 Upload Manuscript">
-            <UploadTab onUploadComplete={() => setKey("advice")} />
+            <UploadTab
+              onUploadComplete={() => setKey("advice")}
+              personality={personality}
+              setPersonality={setPersonality}
+            />
           </Tab>
 
-          {/* Writing Advice */}
+
           <Tab eventKey="advice" title="✍️ Writing Advice">
             <WritingAdviceTab
-              onResponsesUpdate={(data) => setWritingResponses(data)}
+              onResponsesUpdate={setWritingResponses}
+              personality={personality}
             />
           </Tab>
 
-          {/* Market Insights */}
           <Tab eventKey="insights" title="📊 Market Insights">
             <MarketInsightsTab
-              onResponsesUpdate={(data) => setMarketInsightsResponses(data)}
+              onResponsesUpdate={setMarketInsightsResponses}
+              personality={personality}
             />
           </Tab>
 
-          {/* Marketing Strategy */}
           <Tab eventKey="strategy" title="📣 Marketing Strategy">
             <MarketingStrategyTab
-              onResponsesUpdate={(data) => setMarketingStrategyResponses(data)}
+              onResponsesUpdate={setMarketingStrategyResponses}
+              personality={personality}
             />
           </Tab>
 
-          {/* Book Quality Check */}
           <Tab eventKey="quality" title="📘 Book Quality Check">
             <BookQualityCheckTab
-              onResponsesUpdate={(data) => setBookQualityResponses(data)}
+              onResponsesUpdate={setBookQualityResponses}
+              personality={personality}
             />
           </Tab>
         </Tabs>
       </Container>
 
-      {/* Footer */}
       <footer className="text-center text-muted py-3 border-top">
         © {new Date().getFullYear()} Reader AI
       </footer>

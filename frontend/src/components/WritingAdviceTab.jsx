@@ -1,150 +1,186 @@
 import React, { useState } from "react";
 import {
+  Container,
   Card,
   Button,
-  Collapse,
   Spinner,
   Form,
-  Container,
+  Collapse,
   Row,
   Col,
 } from "react-bootstrap";
-import API_BASE from "../config";
 
-function WritingAdviceTab({ onResponsesUpdate }) {
+// ✔ Personality settings
+const PERSONALITIES = {
+  direct:
+    "Use a direct, blunt, highly honest tone. Do not soften criticism. Prioritize truth over comfort.",
+  gentle:
+    "Use a soft, encouraging, supportive tone. Phrase critiques gently and highlight strengths first.",
+  academic:
+    "Use a scholarly, analytical tone. Focus on structure, clarity, theory, and literary quality.",
+  commercial:
+    "Use an industry-focused professional tone discussing marketability, clarity, and audience expectations.",
+};
+
+function WritingAdviceTab({ onResponsesUpdate, personality }) {
   const [loadingState, setLoadingState] = useState({});
   const [responses, setResponses] = useState({});
   const [prompts, setPrompts] = useState({});
   const [openSections, setOpenSections] = useState({});
   const [editPromptOpen, setEditPromptOpen] = useState({});
 
-  const handlePromptChange = (key, value) => {
-    setPrompts((prev) => ({ ...prev, [key]: value }));
+  const handlePromptChange = (i, val) => {
+    setPrompts((prev) => ({ ...prev, [i]: val }));
   };
 
-  const handleFeedback = async (key, topicPrompt, depth = "quick") => {
-    setLoadingState((prev) => ({ ...prev, [key]: depth }));
-    setResponses((prev) => ({ ...prev, [key]: "" }));
+  const handleFeedback = async (i, topicPrompt, depth = "quick") => {
+    setLoadingState((p) => ({ ...p, [i]: depth }));
+    setResponses((p) => ({ ...p, [i]: "" }));
 
-    const personalizedPrompt = `
-You are a professional writing coach and editor. 
-Use a direct, objective, and constructive tone — avoid exaggerated praise or emotional language.
-Base your feedback strictly on the uploaded manuscript.
+    const personalityModifier = PERSONALITIES[personality] || "";
 
-Task: ${prompts[key] || topicPrompt}
+    const promptToSend = `
+You are a professional writing coach and literary analyst.
+Your goal is to help the author refine their prose, structure, pacing, and clarity.
 
-Requested response style:
-${
-  depth === "quick"
-    ? "Provide a concise, 3–5 sentence editorial summary."
-    : "Provide a detailed, structured editorial analysis with strengths, weaknesses, and specific recommendations."
-}
-Avoid dramatic or overly personal language. Maintain a confident, neutral editorial voice.
+AI Personality Style (follow this strictly at all times):
+${personalityModifier}
+
+Task: ${prompts[i] || topicPrompt}
+
+Response style: ${
+      depth === "quick"
+        ? "Provide a concise 3–5 sentence writing improvement summary."
+        : "Provide a detailed writing analysis with clear sections, bullet points, and actionable revision suggestions. Maintain the selected personality tone strictly."
+    }
     `.trim();
 
     try {
-      const res = await fetch(`${API_BASE}/api/gemini`, {
+      const res = await fetch("https://aipublishing.onrender.com/api/gemini", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt: personalizedPrompt }),
+        body: JSON.stringify({ prompt: promptToSend }),
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to get AI response");
 
-      // SAFE: Update local state FIRST
-      const updated = { ...responses, [key]: data.text };
+      if (!res.ok) {
+        window.setGlobalError(data.error || "Writing advice request failed.");
+        throw new Error(data.error || "Writing advice request failed");
+      }
+
+      const updated = { ...responses, [i]: data.text };
       setResponses(updated);
 
-      // SAFE: Only notify parent AFTER updating state
       if (typeof onResponsesUpdate === "function") {
         onResponsesUpdate(updated);
       }
 
-      setOpenSections((prev) => ({ ...prev, [key]: true }));
-    } catch (error) {
-      setResponses((prev) => ({
-        ...prev,
-        [key]:
-          "⚠️ Connection error. Please check your network or backend connection.",
-      }));
+      setOpenSections((p) => ({ ...p, [i]: true }));
+    } catch (err) {
+      console.error(err);
+      window.setGlobalError(
+        "Error generating writing advice. Please try again."
+      );
+
+      const updated = {
+        ...responses,
+        [i]: "⚠️ Error generating writing advice. Please check your connection.",
+      };
+      setResponses(updated);
+
+      if (typeof onResponsesUpdate === "function") {
+        onResponsesUpdate(updated);
+      }
     } finally {
-      setLoadingState((prev) => ({ ...prev, [key]: null }));
+      setLoadingState((p) => ({ ...p, [i]: null }));
     }
   };
 
-  const toggleSection = (key) =>
-    setOpenSections((prev) => ({ ...prev, [key]: !prev[key] }));
+  const toggleSection = (i) =>
+    setOpenSections((p) => ({ ...p, [i]: !p[i] }));
 
-  const toggleEditPrompt = (key) =>
-    setEditPromptOpen((prev) => ({ ...prev, [key]: !prev[key] }));
+  const toggleEditPrompt = (i) =>
+    setEditPromptOpen((p) => ({ ...p, [i]: !p[i] }));
 
-  const levels = [
+  const sections = [
     {
-      key: "level1",
-      title: "Level 1: Basic Writing Skills",
-      desc: "Looks at your clarity, sentence flow, grammar, punctuation, and overall readability.",
+      title: "1. Narrative Clarity & Flow",
+      description:
+        "Get feedback on whether your scenes, pacing, and transitions are working smoothly.",
       prompt:
-        "Review the manuscript for clarity, sentence flow, grammar, punctuation, and readability. Identify areas needing improvement and offer direct, constructive guidance.",
+        "Analyze the manuscript’s clarity, flow, pacing, and scene-to-scene transitions. Identify where the narrative slows down or becomes confusing.",
     },
     {
-      key: "level2",
-      title: "Level 2: Story Structure & Characters",
-      desc: "Evaluates your pacing, transitions, dialogue, plot flow, and character development.",
+      title: "2. Character Development",
+      description:
+        "Learn how strong and consistent your character arcs and motivations are.",
       prompt:
-        "Evaluate the structure of your story, including pacing, transitions, dialogue, and character development. Highlight strengths and offer specific suggestions for improving plot momentum or character clarity.",
+        "Evaluate character development, motivations, growth, voice consistency, and emotional impact.",
     },
     {
-      key: "level3",
-      title: "Level 3: Themes & Philosophy",
-      desc: "Analyzes the deeper meaning, themes, symbolism, and emotional tone in your manuscript.",
+      title: "3. Writing Style & Voice",
+      description:
+        "Improve sentence quality, tone, and overall stylistic cohesion.",
       prompt:
-        "Analyze the themes, symbolism, emotional tone, and deeper meaning within your manuscript. Explain what readers may take away and suggest ways to strengthen thematic clarity.",
+        "Assess the manuscript’s writing style, tone, and voice. Identify strengths and areas for stylistic refinement.",
     },
     {
-      key: "enjoyment",
-      title: "Reader Enjoyment",
-      desc: "Assesses your tone, rhythm, emotional impact, and overall reader engagement.",
+      title: "4. Structural Strength",
+      description:
+        "Analyze plot architecture, chapters, arcs, and structural pacing.",
       prompt:
-        "Evaluate how engaging and immersive the manuscript is. Assess tone, rhythm, atmosphere, emotional impact, and flow. Offer constructive advice for improving engagement.",
+        "Provide a structural analysis of the manuscript’s plot arcs, chapter organization, and narrative architecture.",
+    },
+    {
+      title: "5. Emotional & Thematic Impact",
+      description:
+        "Understand how effectively your themes and emotional beats are landing.",
+      prompt:
+        "Analyze the manuscript's thematic clarity and emotional resonance. Identify strong moments and missed opportunities.",
     },
   ];
 
   return (
     <Container className="py-4 text-start">
-      <h2 className="mb-4 text-center text-primary">✍️ Writing Advice & Feedback</h2>
+      <h2 className="mb-4 text-center text-primary">✍️ Writing Advice</h2>
 
-      {levels.map((lvl) => (
-        <Card key={lvl.key} className="mb-4 shadow-sm">
+      {sections.map((section, index) => (
+        <Card key={index} className="mb-4 shadow-sm">
           <Card.Body>
             <Row className="align-items-center mb-2">
-              <Col xs="auto" className="flex-grow-1">
-                <Card.Title className="fw-bold mb-0">{lvl.title}</Card.Title>
+              <Col className="flex-grow-1">
+                <Card.Title className="fw-bold mb-0">
+                  {section.title}
+                </Card.Title>
               </Col>
+
               <Col xs="auto">
                 <Button
                   variant="outline-secondary"
                   size="sm"
-                  onClick={() => toggleEditPrompt(lvl.key)}
+                  onClick={() => toggleEditPrompt(index)}
                 >
-                  {editPromptOpen[lvl.key] ? "Done Editing" : "✏️ Edit Prompt"}
+                  {editPromptOpen[index] ? "Done" : "✏️ Edit Prompt"}
                 </Button>
               </Col>
             </Row>
 
-            <Card.Text className="text-muted mb-2">{lvl.desc}</Card.Text>
+            <Card.Text className="text-muted">{section.description}</Card.Text>
 
-            <Collapse in={editPromptOpen[lvl.key]}>
+            <Collapse in={editPromptOpen[index]}>
               <div className="mb-3">
                 <Form.Group>
-                  <Form.Label className="fw-semibold text-secondary">
+                  <Form.Label className="fw-semibold">
                     Prompt being sent:
                   </Form.Label>
                   <Form.Control
                     as="textarea"
                     rows={3}
-                    value={prompts[lvl.key] ?? lvl.prompt}
-                    onChange={(e) => handlePromptChange(lvl.key, e.target.value)}
+                    value={prompts[index] ?? section.prompt}
+                    onChange={(e) =>
+                      handlePromptChange(index, e.target.value)
+                    }
                   />
                 </Form.Group>
               </div>
@@ -153,10 +189,12 @@ Avoid dramatic or overly personal language. Maintain a confident, neutral editor
             <div className="d-flex flex-wrap gap-2 mb-2">
               <Button
                 variant="outline-success"
-                disabled={!!loadingState[lvl.key]}
-                onClick={() => handleFeedback(lvl.key, lvl.prompt, "quick")}
+                disabled={!!loadingState[index]}
+                onClick={() =>
+                  handleFeedback(index, section.prompt, "quick")
+                }
               >
-                {loadingState[lvl.key] === "quick" ? (
+                {loadingState[index] === "quick" ? (
                   <Spinner animation="border" size="sm" />
                 ) : (
                   "Quick Summary"
@@ -165,32 +203,34 @@ Avoid dramatic or overly personal language. Maintain a confident, neutral editor
 
               <Button
                 variant="outline-primary"
-                disabled={!!loadingState[lvl.key]}
-                onClick={() => handleFeedback(lvl.key, lvl.prompt, "in-depth")}
+                disabled={!!loadingState[index]}
+                onClick={() =>
+                  handleFeedback(index, section.prompt, "in-depth")
+                }
               >
-                {loadingState[lvl.key] === "in-depth" ? (
+                {loadingState[index] === "in-depth" ? (
                   <Spinner animation="border" size="sm" />
                 ) : (
-                  "In-Depth Response"
+                  "In-Depth Advice"
                 )}
               </Button>
 
-              {responses[lvl.key] && (
+              {responses[index] && (
                 <Button
                   variant="outline-secondary"
-                  onClick={() => toggleSection(lvl.key)}
+                  onClick={() => toggleSection(index)}
                 >
-                  {openSections[lvl.key] ? "▲ Minimize" : "▼ Expand"}
+                  {openSections[index] ? "▲ Minimize" : "▼ Expand"}
                 </Button>
               )}
             </div>
 
-            <Collapse in={openSections[lvl.key]}>
+            <Collapse in={openSections[index]}>
               <div
-                className="mt-3 p-3 border rounded bg-light"
+                className="mt-3 p-3 bg-light border rounded"
                 style={{ whiteSpace: "pre-wrap" }}
               >
-                {responses[lvl.key] || ""}
+                {responses[index] || ""}
               </div>
             </Collapse>
           </Card.Body>
