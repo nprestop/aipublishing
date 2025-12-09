@@ -1,12 +1,31 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Card, Form, Button, Spinner, Alert } from "react-bootstrap";
 
 function UploadTab({ onUploadComplete, personality, setPersonality }) {
   const [file, setFile] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [message, setMessage] = useState("");
-  const [uploads, setUploads] = useState([]);
-  const [currentVersion, setCurrentVersion] = useState(1);
+
+  // Load existing session uploads from localStorage
+  const [uploads, setUploads] = useState(() => {
+    const saved = localStorage.getItem("userUploads");
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  const [currentVersion, setCurrentVersion] = useState(() => {
+    const saved = localStorage.getItem("currentVersion");
+    return saved ? parseInt(saved) : 1;
+  });
+
+  useEffect(() => {
+    // Save uploads whenever they change
+    localStorage.setItem("userUploads", JSON.stringify(uploads));
+  }, [uploads]);
+
+  useEffect(() => {
+    // Save version whenever it changes
+    localStorage.setItem("currentVersion", currentVersion);
+  }, [currentVersion]);
 
   const handleFileChange = (e) => {
     setFile(e.target.files[0]);
@@ -39,8 +58,11 @@ function UploadTab({ onUploadComplete, personality, setPersonality }) {
           name: file.name,
           length: data.length,
           version: currentVersion,
+          timestamp: Date.now()
         };
-        setUploads((prev) => [...prev, fileInfo]);
+
+        const updatedUploads = [...uploads, fileInfo];
+        setUploads(updatedUploads);
 
         setMessage(
           `✅ Version ${currentVersion} uploaded successfully! (${data.length.toLocaleString()} characters processed)`
@@ -54,7 +76,8 @@ function UploadTab({ onUploadComplete, personality, setPersonality }) {
       } else {
         setMessage(`❌ Upload failed: ${data.error || "Unknown error"}`);
       }
-    } catch {
+    } catch (err) {
+      console.error(err);
       setMessage("❌ Failed to connect to backend. Please ensure the server is running.");
     } finally {
       setUploading(false);
@@ -115,9 +138,7 @@ function UploadTab({ onUploadComplete, personality, setPersonality }) {
               Uploading...
             </>
           ) : (
-            `Upload Manuscript ${
-              currentVersion === 1 ? "" : `(Version ${currentVersion})`
-            }`
+            `Upload Manuscript ${currentVersion > 1 ? `(Version ${currentVersion})` : ""}`
           )}
         </Button>
       </div>
@@ -133,12 +154,10 @@ function UploadTab({ onUploadComplete, personality, setPersonality }) {
 
       {uploads.length > 0 && (
         <div className="mt-4">
-          <h6 className="fw-bold text-secondary mb-2">
-            📚 Uploaded Manuscripts
-          </h6>
+          <h6 className="fw-bold text-secondary mb-2">📚 Uploaded Manuscripts</h6>
           {uploads.map((u, i) => (
             <Card key={i} className="p-3 mb-2 border-0 bg-light">
-              <div className="d-flex justify-content-between align-items-center">
+              <div className="d-flex justify-content-between">
                 <div>
                   <strong>Version {u.version}:</strong> {u.name}
                 </div>

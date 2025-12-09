@@ -37,6 +37,14 @@ function BookQualityCheckTab({ onResponsesUpdate, personality }) {
     setLoadingState((prev) => ({ ...prev, [i]: depth }));
     setResponses((prev) => ({ ...prev, [i]: "" }));
 
+    // ⭐ LOAD USER'S OWN MANUSCRIPT (fixes multi-user session issue)
+    const manuscript = JSON.parse(localStorage.getItem("manuscript"));
+
+    if (!manuscript?.text) {
+      window.setGlobalError("No manuscript found. Please upload one first.");
+      return;
+    }
+
     const personalityModifier = PERSONALITIES[personality] || "";
 
     const finalPrompt = `
@@ -47,6 +55,9 @@ Assess the manuscript objectively as a commercial product.
 
 AI Personality Style (follow strictly):
 ${personalityModifier}
+
+User Manuscript (analyze ONLY this):
+${manuscript.text}
 
 Task: ${prompts[i] || topicPrompt}
 

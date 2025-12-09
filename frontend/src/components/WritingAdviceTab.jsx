@@ -55,11 +55,28 @@ Response style: ${
     }
     `.trim();
 
+    // ⭐ NEW: Load manuscript for this session
+    const manuscript = JSON.parse(localStorage.getItem("manuscript"));
+    if (!manuscript || !manuscript.text) {
+      window.setGlobalError("Please upload a manuscript first.");
+      setLoadingState((p) => ({ ...p, [i]: null }));
+      return;
+    }
+
+    // ⭐ NEW: Combine manuscript with the prompt
+    const finalPrompt = `
+${promptToSend}
+
+=========================
+📘 FULL MANUSCRIPT CONTEXT:
+${manuscript.text}
+    `.trim();
+
     try {
       const res = await fetch("https://aipublishing.onrender.com/api/gemini", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt: promptToSend }),
+        body: JSON.stringify({ prompt: finalPrompt }), // ⭐ UPDATED
       });
 
       const data = await res.json();
